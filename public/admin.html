@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Hyderabad Parks</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .dashboard-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-online { background-color: #28a745; }
+        .status-offline { background-color: #dc3545; }
+        
+        .command-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .command-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .command-pending {
+            border-left: 4px solid #ffc107;
+        }
+        
+        .command-acknowledged {
+            border-left: 4px solid #28a745;
+        }
+        
+        .refresh-btn {
+            float: right;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c5aa0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Admin Dashboard</h1>
+            <p>Monitor ticketing system and controller status</p>
+            <button onclick="refreshDashboard()" class="btn-secondary refresh-btn">Refresh</button>
+        </header>
+
+        <div class="dashboard-grid">
+            <!-- Controller Status Card -->
+            <div class="dashboard-card">
+                <h3>Controller Status</h3>
+                <div id="controllerStatus">
+                    <p><span class="status-indicator status-offline"></span> Loading...</p>
+                </div>
+            </div>
+
+            <!-- Today's Statistics Card -->
+            <div class="dashboard-card">
+                <h3>Today's Statistics</h3>
+                <div id="todayStats">
+                    <p>Loading...</p>
+                </div>
+            </div>
+
+            <!-- Network Information Card -->
+            <div class="dashboard-card">
+                <h3>Network Configuration</h3>
+                <div id="networkInfo">
+                    <p><strong>Server IP:</strong> <span id="serverIP">-</span></p>
+                    <p><strong>Controller Expected IP:</strong> 192.168.1.101</p>
+                    <p><strong>Poll Interval:</strong> 500ms</p>
+                    <p><strong>Gate Duration:</strong> 5 seconds</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-card">
+            <h3>Gate Commands</h3>
+            <div id="gateCommands">
+                <h4>Pending Commands</h4>
+                <div id="pendingCommands" class="command-list">
+                    <p>No pending commands</p>
+                </div>
+                
+                <h4>Recent Commands</h4>
+                <div id="recentCommands" class="command-list">
+                    <p>No recent commands</p>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>
+                <a href="/">Booking Portal</a> | 
+                <a href="/scanner">QR Scanner</a>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        let dashboardData = null;
+
+        async function fetchDashboard() {
+            try {
+                const response = await fetch('/admin/dashboard');
+                dashboardData = await response.json();
+                updateDashboard();
+            } catch (error) {
+                console.error('Failed to fetch dashboard:', error);
+            }
+        }
+
+        function updateDashboard() {
+            if (!dashboardData) return;
+
+            // Update controller status
+            const controllerDiv = document.getElementById('controllerStatus');
+            const isOnline = dashboardData.controller.status === 'online';
+            controllerDiv.innerHTML = `
+                <p>
+                    <span class="status-indicator ${isOnline ? 'status-online' : 'status-offline'}"></span>
+                    <strong>Status:</strong> ${dashboardData.controller.status.toUpperCase()}
+                </p>
+                <p><strong>IP Address:</strong> ${dashboardData.controller.ip || 'Not connected'}</p>
+                <p><strong>Last Heartbeat:</strong> ${
+                    dashboardData.controller.lastHeartbeat 
+                        ? new Date(dashboardData.controller.lastHeartbeat).toLocaleTimeString()
+                        : 'Never'
+                }</p>
+            `;
+
+            // Update today's statistics
+            const statsDiv = document.getElementById('todayStats');
+            statsDiv.innerHTML = `
+                <p><span class="stat-value">${dashboardData.todayStats.totalTickets}</span><br>Total Tickets</p>
+                <p><span class="stat-value">${dashboardData.todayStats.usedTickets}</span><br>Used Tickets</p>
+                <p><span class="stat-value">₹${dashboardData.todayStats.revenue}</span><br>Revenue</p>
+            `;
+
+            // Update pending commands
+            const pendingDiv = document.getElementById('pendingCommands');
+            if (dashboardData.gateCommands.pending.length > 0) {
+                pendingDiv.innerHTML = dashboardData.gateCommands.pending.map(cmd => `
+                    <div class="command-item command-pending">
+                        <strong>Ticket:</strong> ${cmd.ticketId}<br>
+                        <strong>Action:</strong> ${cmd.action}<br>
+                        <strong>Time:</strong> ${new Date(cmd.timestamp).toLocaleTimeString()}
+                    </div>
+                `).join('');
+            } else {
+                pendingDiv.innerHTML = '<p>No pending commands</p>';
+            }
+
+            // Update recent commands
+            const recentDiv = document.getElementById('recentCommands');
+            if (dashboardData.gateCommands.recent.length > 0) {
+                recentDiv.innerHTML = dashboardData.gateCommands.recent.map(cmd => `
+                    <div class="command-item ${cmd.acknowledged ? 'command-acknowledged' : 'command-pending'}">
+                        <strong>Ticket:</strong> ${cmd.ticketId}<br>
+                        <strong>Status:</strong> ${cmd.acknowledged ? 'Executed' : 'Pending'}<br>
+                        <strong>Time:</strong> ${new Date(cmd.timestamp).toLocaleTimeString()}
+                    </div>
+                `).join('');
+            } else {
+                recentDiv.innerHTML = '<p>No recent commands</p>';
+            }
+
+            // Update server IP
+            document.getElementById('serverIP').textContent = window.location.hostname + ':' + window.location.port;
+        }
+
+        function refreshDashboard() {
+            fetchDashboard();
+        }
+
+        // Initial load
+        fetchDashboard();
+
+        // Auto-refresh every 2 seconds
+        setInterval(fetchDashboard, 2000);
+    </script>
+</body>
+</html>

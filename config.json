@@ -1,0 +1,18 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 3000,
+    "allowedControllerIPs": ["192.168.1.101", "192.168.1.102"]
+  },
+  "controller": {
+    "expectedIP": "192.168.1.101",
+    "pollInterval": 500,
+    "heartbeatInterval": 5000,
+    "gateOpenDuration": 5000,
+    "timeout": 10000
+  },
+  "network": {
+    "serverIP": "192.168.1.100",
+    "subnet": "255.255.255.0"
+  }
+}

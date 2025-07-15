@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Park Entry Ticket - Hyderabad Parks</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div id="ticketDisplay" class="ticket-page">
+            <!-- Ticket will be loaded here -->
+        </div>
+    </div>
+
+    <script>
+        // Get ticket ID from URL
+        const ticketId = window.location.pathname.split('/').pop();
+
+        // Load ticket details
+        async function loadTicket() {
+            try {
+                const response = await fetch(`/api/tickets/${ticketId}`);
+                
+                if (!response.ok) {
+                    throw new Error('Ticket not found');
+                }
+                
+                const data = await response.json();
+                displayTicket(data.ticket);
+                
+            } catch (error) {
+                document.getElementById('ticketDisplay').innerHTML = `
+                    <div class="error-message">
+                        <h2>Ticket Not Found</h2>
+                        <p>The requested ticket could not be found.</p>
+                        <a href="/" class="btn-primary">Book New Ticket</a>
+                    </div>
+                `;
+            }
+        }
+
+        // Display ticket
+        function displayTicket(ticket) {
+            const ticketDiv = document.getElementById('ticketDisplay');
+            ticketDiv.innerHTML = `
+                <div class="ticket-print">
+                    <header class="ticket-header">
+                        <h1>Hyderabad Parks</h1>
+                        <h2>Entry Ticket</h2>
+                    </header>
+                    
+                    <div class="qr-section">
+                        <img src="${ticket.qrCode}" alt="QR Code" class="qr-code-large">
+                        <p class="ticket-id">${ticket.id}</p>
+                    </div>
+                    
+                    <div class="ticket-details-print">
+                        <div class="detail-row">
+                            <span class="label">Visitor Name:</span>
+                            <span class="value">${ticket.visitorName}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Phone:</span>
+                            <span class="value">${ticket.phone}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Visit Date:</span>
+                            <span class="value">${new Date(ticket.visitDate).toLocaleDateString()}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Ticket Type:</span>
+                            <span class="value">${ticket.ticketType === 'single' ? 'Single Entry' : 'Daily Pass'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Visitors:</span>
+                            <span class="value">${ticket.adultCount} Adults, ${ticket.childCount} Children</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Total Amount:</span>
+                            <span class="value">₹${ticket.totalAmount}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Status:</span>
+                            <span class="value ${ticket.status}">${ticket.status.toUpperCase()}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="ticket-instructions">
+                        <h3>Instructions:</h3>
+                        <ul>
+                            <li>Show this QR code at the park entrance</li>
+                            <li>Keep this ticket safe during your visit</li>
+                            <li>${ticket.ticketType === 'single' ? 'This ticket is valid for one-time entry only' : 'This ticket allows multiple entries on the visit date'}</li>
+                            <li>Entry allowed only on the specified visit date</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="ticket-footer">
+                        <p>Booked on: ${new Date(ticket.createdAt).toLocaleString()}</p>
+                        <button onclick="window.print()" class="btn-primary no-print">Print Ticket</button>
+                        <a href="/" class="btn-secondary no-print">Book Another Ticket</a>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Load ticket on page load
+        loadTicket();
+    </script>
+</body>
+</html>

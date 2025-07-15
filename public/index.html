@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyderabad Parks - Book Tickets</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Hyderabad Parks Ticketing</h1>
+            <p>Book your park visit tickets online</p>
+        </header>
+
+        <main>
+            <form id="ticketForm" class="ticket-form">
+                <h2>Book Your Tickets</h2>
+                
+                <div class="form-group">
+                    <label for="visitorName">Visitor Name *</label>
+                    <input type="text" id="visitorName" name="visitorName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number *</label>
+                    <input type="tel" id="phone" name="phone" pattern="[0-9]{10}" required>
+                    <small>10 digit mobile number</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="visitDate">Visit Date *</label>
+                    <input type="date" id="visitDate" name="visitDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Ticket Type *</label>
+                    <div class="radio-group">
+                        <label>
+                            <input type="radio" name="ticketType" value="single" checked>
+                            Single Entry
+                        </label>
+                        <label>
+                            <input type="radio" name="ticketType" value="daily">
+                            Daily Pass
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="adultCount">Number of Adults (₹50 each) *</label>
+                    <input type="number" id="adultCount" name="adultCount" min="1" value="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="childCount">Number of Children (₹25 each)</label>
+                    <input type="number" id="childCount" name="childCount" min="0" value="0">
+                    <small>Ages 5-17. Under 5 is free.</small>
+                </div>
+
+                <div class="total-amount">
+                    <h3>Total Amount: ₹<span id="totalAmount">50</span></h3>
+                </div>
+
+                <button type="submit" class="btn-primary">Generate Ticket</button>
+            </form>
+
+            <div id="result" class="result-container" style="display: none;">
+                <!-- Ticket result will be displayed here -->
+            </div>
+        </main>
+
+        <footer>
+            <p><a href="/scanner">Go to QR Scanner</a></p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

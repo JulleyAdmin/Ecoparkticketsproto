@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Scanner - Hyderabad Parks</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/html5-qrcode/html5-qrcode.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Ticket Scanner</h1>
+            <p>Scan QR codes to validate park entry tickets</p>
+        </header>
+
+        <main>
+            <div class="scanner-container">
+                <div id="reader" class="qr-reader"></div>
+                
+                <div class="scanner-controls">
+                    <button id="startScan" class="btn-primary">Start Scanning</button>
+                    <button id="stopScan" class="btn-secondary" style="display: none;">Stop Scanning</button>
+                </div>
+
+                <div class="manual-entry">
+                    <h3>Or enter ticket ID manually:</h3>
+                    <form id="manualForm">
+                        <input type="text" id="ticketId" placeholder="PKT-202407-XXXXXXXX" pattern="PKT-\d{6}-[A-Z0-9]{8}">
+                        <button type="submit" class="btn-primary">Validate</button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="validationResult" class="validation-result" style="display: none;">
+                <!-- Validation results will be displayed here -->
+            </div>
+        </main>
+
+        <footer>
+            <p><a href="/">Back to Ticket Booking</a></p>
+        </footer>
+    </div>
+
+    <script>
+        let html5QrcodeScanner = null;
+
+        // Start QR scanner
+        document.getElementById('startScan').addEventListener('click', function() {
+            const config = {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0
+            };
+
+            html5QrcodeScanner = new Html5Qrcode("reader");
+            
+            html5QrcodeScanner.start(
+                { facingMode: "environment" },
+                config,
+                onScanSuccess,
+                onScanError
+            ).catch(err => {
+                console.error("Unable to start scanning", err);
+                alert("Unable to access camera. Please check permissions.");
+            });
+
+            document.getElementById('startScan').style.display = 'none';
+            document.getElementById('stopScan').style.display = 'block';
+        });
+
+        // Stop QR scanner
+        document.getElementById('stopScan').addEventListener('click', function() {
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.stop().then(() => {
+                    document.getElementById('startScan').style.display = 'block';
+                    document.getElementById('stopScan').style.display = 'none';
+                }).catch(err => console.error("Unable to stop scanning", err));
+            }
+        });
+
+        // Handle successful QR scan
+        function onScanSuccess(decodedText, decodedResult) {
+            // Stop scanning after successful read
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.stop();
+                document.getElementById('startScan').style.display = 'block';
+                document.getElementById('stopScan').style.display = 'none';
+            }
+
+            // Validate the QR code
+            validateQRCode(decodedText);
+        }
+
+        function onScanError(errorMessage) {
+            // Handle scan error silently
+        }
+
+        // Validate QR code
+        async function validateQRCode(qrData) {
+            try {
+                const response = await fetch('/api/validate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ qrData })
+                });
+
+                const result = await response.json();
+                displayValidationResult(result);
+
+            } catch (error) {
+                console.error('Validation error:', error);
+                displayValidationResult({
+                    valid: false,
+                    message: 'Error validating ticket'
+                });
+            }
+        }
+
+        // Display validation result
+        function displayValidationResult(result) {
+            const resultDiv = document.getElementById('validationResult');
+            const isValid = result.valid;
+            
+            resultDiv.className = `validation-result ${isValid ? 'valid' : 'invalid'}`;
+            
+            let html = `
+                <div class="result-header">
+                    <h2>${isValid ? '✓ VALID' : '✗ INVALID'}</h2>
+                    <p>${result.message}</p>
+                </div>
+            `;
+
+            if (result.ticket) {
+                html += `
+                    <div class="ticket-info">
+                        <p><strong>Ticket ID:</strong> ${result.ticket.id}</p>
+                        <p><strong>Visitor:</strong> ${result.ticket.visitorName}</p>
+                        <p><strong>Type:</strong> ${result.ticket.ticketType === 'single' ? 'Single Entry' : 'Daily Pass'}</p>
+                        <p><strong>Visitors:</strong> ${result.ticket.adultCount} Adults, ${result.ticket.childCount} Children</p>
+                        <p><strong>Visit Date:</strong> ${new Date(result.ticket.visitDate).toLocaleDateString()}</p>
+                        ${result.ticket.status === 'used' ? `<p><strong>Used At:</strong> ${new Date(result.ticket.usedAt).toLocaleString()}</p>` : ''}
+                    </div>
+                `;
+            }
+
+            resultDiv.innerHTML = html;
+            resultDiv.style.display = 'block';
+
+            // Play sound based on validation result
+            playValidationSound(isValid);
+
+            // Auto-hide result after 5 seconds
+            setTimeout(() => {
+                resultDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Play validation sound
+        function playValidationSound(isValid) {
+            const audio = new Audio(`data:audio/wav;base64,${isValid ? 
+                'UklGRnoGAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMFHm7A7+OZURE' :
+                'UklGRkgFAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YXAFAAC4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4'
+            }`);
+            audio.volume = 0.3;
+            audio.play().catch(e => console.log('Audio play failed:', e));
+        }
+
+        // Handle manual ticket ID entry
+        document.getElementById('manualForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const ticketId = document.getElementById('ticketId').value;
+            
+            try {
+                const response = await fetch(`/api/tickets/${ticketId}`);
+                const data = await response.json();
+                
+                if (response.ok && data.ticket) {
+                    // Create QR data from ticket to validate
+                    const qrData = JSON.stringify({
+                        id: data.ticket.id,
+                        visitDate: data.ticket.visitDate,
+                        type: data.ticket.ticketType,
+                        signature: 'manual-validation' // This will fail signature check
+                    });
+                    
+                    // For manual validation, we'll need a different approach
+                    // Let's validate the ticket directly
+                    displayValidationResult({
+                        valid: data.ticket.status === 'active' && data.ticket.visitDate === new Date().toISOString().split('T')[0],
+                        message: data.ticket.status === 'active' ? 'Valid ticket - Manual validation' : 'Ticket already used',
+                        ticket: data.ticket
+                    });
+                } else {
+                    displayValidationResult({
+                        valid: false,
+                        message: 'Ticket not found'
+                    });
+                }
+            } catch (error) {
+                displayValidationResult({
+                    valid: false,
+                    message: 'Error validating ticket'
+                });
+            }
+        });
+    </script>
+</body>
+</html>
